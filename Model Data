@@ -1,0 +1,392 @@
+#Exercise 1
+
+PUT hamlet_1
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}
+
+
+PUT hamlet_1/_mapping
+{
+  "properties": {
+    "speaker": {
+      "type": "keyword"
+    },
+    "line_number": {
+      "type": "keyword",
+      "doc_values": "false"
+    },
+    "text_entry": {
+      "type": "text"
+    }
+  }
+}
+
+PUT hamlet_1/_bulk
+{"index":{"_index":"hamlet_1","_id":0}}
+{"line_number":"1.1.1","speaker":"BERNARDO","text_entry":"Whos there?"}
+{"index":{"_index":"hamlet_1","_id":1}}
+{"line_number":"1.1.2","speaker":"FRANCISCO","text_entry":"Nay, answer me: stand, and unfold yourself."}
+{"index":{"_index":"hamlet_1","_id":2}}
+{"line_number":"1.1.3","speaker":"BERNARDO","text_entry":"Long live the king!"}
+{"index":{"_index":"hamlet_1","_id":3}}
+{"line_number":"1.2.1","speaker":"KING CLAUDIUS","text_entry":"Though yet of Hamlet     our dear brothers death"}
+{"index":{"_index":"hamlet_1","_id":4}}
+{"line_number":"1.2.2","speaker":"KING CLAUDIUS","text_entry":"The memory be green,    and that it us befitted"}
+
+PUT hamlet_2
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}
+
+PUT hamlet_2/_mapping
+{
+  "properties": {
+    "speaker": {
+      "type": "keyword",
+      "fields":{
+        "tokens":{
+          "type":"text"
+        }
+      }
+    },
+    "line_number": {
+      "type": "keyword",
+      "doc_values": "false"
+    },
+    "text_entry": {
+      "type": "text"
+    }
+  }
+}
+
+POST _reindex
+{
+  "source": {
+    "index": "hamlet_1"
+  },
+  "dest": {
+    "index": "hamlet_2"
+  }
+}
+
+POST hamlet_2/_search
+{
+  "query": {
+    "match": {
+      "speaker.tokens": "bernardo"
+    }
+  }
+}
+
+
+#Exercise 2
+
+DELETE hamlet_2, hamlet_1
+
+PUT hamlet_1
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}
+
+POST hamlet_1/_bulk
+{"index":{"_index":"hamlet_1","_id":"C0","routing":"abc"}}
+{"name":"HAMLET","relationship":[{"name":"HORATIO","type":"friend"},{"name":"GERTRUDE","type":"mother"}]}
+{"index":{"_index":"hamlet_1","_id":"C1","routing":"abc"}}
+{"name":"KING CLAUDIUS","relationship":[{"name":"HAMLET","type":"nephew"}]}
+
+POST hamlet_1/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "relationship.name": "gertrude"
+          }
+        },
+        {
+          "match": {
+            "relationship.type": "friend"
+          }
+        }
+      ]
+    }
+  }
+}
+
+PUT hamlet_2
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}
+
+PUT hamlet_2/_mapping
+{
+  "properties": {
+    "relationship": {
+      "type": "nested",
+      "properties": {
+        "type": {
+          "type": "keyword"
+        },
+        "name": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}
+
+POST _reindex
+{
+  "source": {
+    "index": "hamlet_1"
+  },
+  "dest": {
+    "index": "hamlet_2"
+  }
+}
+
+POST hamlet_2/_search
+{
+  "query": {
+    "nested": {
+      "path": "relationship",
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "match": {
+                "relationship.name": "gertrude"
+              }
+            },
+            {
+              "match": {
+                "relationship.type": "friend"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+
+POST hamlet_2/_bulk
+{"index":{"_index":"hamlet_2","_id":"L0","routing":"abc"}}
+{"line_number":"1.4.1","speaker":"HAMLET","text_entry":"The air bites shrewdly; it is very cold."}
+{"index":{"_index":"hamlet_2","_id":"L1","routing":"abc"}}
+{"line_number":"1.4.2","speaker":"HORATIO","text_entry":"It is a nipping and an eager air."}
+{"index":{"_index":"hamlet_2","_id":"L2","routing":"abc"}}
+{"line_number":"1.4.3","speaker":"HAMLET","text_entry":"What hour now?"}
+
+PUT hamlet_3
+{
+  "settings":{
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}
+
+PUT hamlet_3/_mapping
+{
+  "properties": {
+    "relationship": {
+      "type": "nested",
+      "properties": {
+        "type": {
+          "type": "keyword"
+        },
+        "name": {
+          "type": "keyword"
+        }
+      }
+    },
+    "character_or_line":{
+      "type":"join",
+      "relations":{
+        "character":"line"
+      }
+    }
+  }
+}
+
+POST _reindex
+{
+  "source": {
+    "index": "hamlet_2"
+  },
+  "dest": {
+    "index": "hamlet_3"
+  }
+}
+
+POST hamlet_3/_update/C0
+{
+  "doc": {
+    "character_or_line": {
+      "name": "character"
+    }
+  }
+}
+
+PUT _scripts/init_lines
+{
+  "script":{
+    "lang": "painless",
+    "source": """
+    ctx._source.character_or_line= new HashMap();
+    ctx._source.character_or_line.name='line';
+    ctx._source.character_or_line.parent=params.characterId;
+    """
+  }
+}
+
+POST hamlet_3/_update_by_query
+{
+  "query": {
+    "match": {
+      "speaker": "HAMLET"
+    }
+  },
+  "script": {
+    "id":"init_lines",
+    "params":{
+      "characterId":"C0"
+    }
+  }
+}
+
+POST hamlet_3/_search
+{
+  "query":{
+    "match_all":{}
+  }
+}
+
+POST hamlet_3/_search
+{
+  "query": {
+    "has_parent": {
+      "parent_type": "character",
+      "query": {
+        "match": {
+          "name": "HAMLET"
+        }
+      }
+    }
+  }
+}
+
+#Exercise 3
+
+DELETE hamlet_2, hmalet_1
+
+PUT hamlet_1
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}
+
+PUT hamlet_1/_mapping
+{
+  "properties":{
+    "speaker":{
+      "type":"text"
+    },
+    "line_number":{
+      "type":"text"
+    },
+    "text_entry":{
+      "type":"text",
+      "analyzer":"english"
+    }
+  }
+}
+
+POST hamlet_1/_bulk
+{"index":{"_index":"hamlet_1","_id":0}}
+{"line_number":"1.1.1","speaker":"BERNARDO","text_entry":"Whos there?"}
+{"index":{"_index":"hamlet_1","_id":1}}
+{"line_number":"1.1.2","speaker":"FRANCISCO","text_entry":"Nay, answer me: stand, and unfold yourself."}
+{"index":{"_index":"hamlet_1","_id":2}}
+{"line_number":"1.1.3","speaker":"BERNARDO","text_entry":"Long live the king!"}
+{"index":{"_index":"hamlet_1","_id":3}}
+{"line_number":"1.2.1","speaker":"KING CLAUDIUS","text_entry":"Though yet of Hamlet our dear brothers death"}
+
+PUT hamlet_2
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "shy_hamlet_analyzer": {
+          "tokenizer": "whitespace",
+          "char_filter": [
+            "my_char_filter"
+          ],
+          "filter": ["length_filter","lowercase"]
+        }
+      },
+      "char_filter": {
+        "my_char_filter": {
+          "type": "mapping",
+          "mappings": [
+            "Hamlet => CENSORED"
+          ]
+        }
+      },
+      "filter": {
+        "length_filter": {
+          "type": "length",
+          "min": 5
+        }
+      }
+    }
+  }
+}
+
+PUT hamlet_2/_mapping
+{
+  "properties": {
+    "text_entry":{
+      "type":"text",
+      "analyzer":"shy_hamlet_analyzer"
+    }
+  }
+}
+
+POST _reindex
+{
+  "source": {
+    "index": "hamlet_1",
+    "_source":"text_entry"
+  },
+  "dest": {
+    "index": "hamlet_2"
+  }
+}
+
+POST hamlet_2/_search
+{
+  "query": {
+    "match": {
+      "text_entry": "censored"
+    }
+  }
+}
