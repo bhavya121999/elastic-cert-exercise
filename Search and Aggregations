@@ -1,0 +1,432 @@
+# Exercise 1
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "match": {
+      "message": "Firefox"
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "from": 50,
+  "size": 50,
+  "query": {
+    "match": {
+      "message": "Firefox"
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match": {
+            "message": "Firefox"
+          }
+        },
+        {
+          "match": {
+            "message": "Kibana"
+          }
+        }
+      ]
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "message": "Firefox"
+          }
+        },
+        {
+          "match": {
+            "message": "Kibana"
+          }
+        }
+      ]
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match": {
+            "message": "Firefox"
+          }
+        },
+        {
+          "match": {
+            "message": "Kibana"
+          }
+        },
+        {
+          "match":{
+            "message":"159.64.35.129"
+          }
+        }
+      ],
+      "minimum_should_match": 2
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match": {
+            "message": "Firefox"
+          }
+        },
+        {
+          "match": {
+            "message": "Kibana"
+          }
+        }
+      ]
+    }
+  },
+  "highlight": {
+    "pre_tags": [
+      "{{"
+    ],
+    "post_tags": [
+      "}}"
+    ],
+    "fields": {
+      "message": {}
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "match_phrase": {
+      "message": "HTTP/1.1 200 51"
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "match_phrase": {
+      "message": "HTTP/1.1 200 51"
+    }
+  },
+  "sort": {
+    "machine.os.keyword": {
+      "order": "desc"
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "match_phrase": {
+      "message": "HTTP/1.1 200 51"
+    }
+  },
+  "sort": [
+    {
+      "machine.os.keyword": {
+        "order": "desc"
+      }
+    },
+    {
+      "timestamp": {
+        "order": "asc"
+      }
+    }
+  ]
+}
+
+POST kibana_sample_data_ecommerce/_search
+{
+  "query": {
+    "match": {
+      "day_of_week": "Monday"
+    }
+  },
+  "sort": {
+    "products.base_price": {
+      "order": "desc",
+      "mode": "min"
+    }
+  }
+}
+
+
+# Exercise 2
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "range": {
+            "response": {
+              "gte": 400,
+              "lt": 500
+            }
+          }
+        },
+        {
+          "match_phrase": {
+            "referer": "http://twitter.com/success/guion-bluford"
+          }
+        }
+      ]
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "prefix": {
+      "referer": "http://twitter.com/success"
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "match_phrase_prefix": {
+      "request": "/people"
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "exists": {
+      "field": "memory"
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "bool": {
+      "must_not": {
+        "exists": {
+          "field": "memory"
+        }
+      }
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "agent": "Windows"
+          }
+        },
+        {
+          "match": {
+            "url": "name:john"
+          }
+        }
+      ],
+      "filter": {
+        "exists": {
+          "field": "phpmemory"
+        }
+      },
+      "should": [
+        {
+          "range": {
+            "response": {
+              "gte": 400
+            }
+          }
+        },
+        {
+          "match": {
+            "tags": "error"
+          }
+        }
+      ],
+      "must_not": {
+        "terms": {
+          "tags": [
+            "warning",
+            "error",
+            "info"
+          ]
+        }
+      }
+    }
+  }
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "range": {
+      "timestamp": {
+        "gte": "now-7d/d",
+        "lte": "now/d"
+      }
+    }
+  }
+}
+
+POST kibana_sample_data_flights/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "Sidnei",
+      "fields": [
+        "OriginCityName",
+        "DestCityName"
+      ],
+      "fuzziness": 2
+    }
+  }
+}
+
+# Exercise 3
+
+POST kibana_sample_data_ecommerce/_search?scroll=2m
+{
+  "size": 100,
+  "query": {
+    "match_all": {}
+  }
+}
+
+POST _search/scroll
+{
+    "scroll" : "2m", 
+    "scroll_id" : "DXF1ZXJ5QW5kRmV0Y2gBAAAAAAAART8WanZSWDBqSUZURnlRVTZ6bWRDTEROUQ==" 
+}
+
+POST kibana_sample_data_logs/_search
+{
+  "query": {
+    "range": {
+      "response": {
+        "gte": 400
+      }
+    }
+  }
+}
+
+POST _scripts/with_response_and_tag
+{
+  "script": {
+    "lang": "mustache",
+    "source": {
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "range": {
+                "response": {
+                  "gte": "{{with_min_response}}",
+                  "lte": "{{with_max_response}}"
+                }
+              }
+            },
+            {
+              "match": {
+                "tags": "{{with_tag}}"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+
+GET kibana_sample_data_logs/_search/template
+{
+  "id": "with_response_and_tag",
+  "params": {
+    "with_min_response": 400,
+    "with_max_response": 500,
+    "with_tag": "security"
+  }
+}
+
+
+GET _render/template/with_response_and_tag
+{
+  "params": {
+    "with_min_response": 400,
+    "with_max_response": 500,
+    "with_tag": "security"
+  }
+}
+
+POST _scripts/with_response_and_tag03
+{
+  "script": {
+    "lang": "mustache",
+    "source": """
+    {
+      "query": {
+        "bool": {
+          "must": [
+            {
+              "range": {
+                "response": {
+                  "gte": {{with_min_response}}{{#with_max_response}},
+                  "lte": {{with_max_response}}{{/with_max_response}}
+                }
+              }
+            }{{#with_tag}},
+            {
+              "match": {
+                "tags": "{{with_tag}}"
+              }
+            }{{/with_tag}}
+          ]
+        }
+      }
+    }
+"""
+  }
+}
+
+
+GET _render/template/with_response_and_tag03
+{
+  "params": {
+    "with_min_response": 500,
+    "with_tag": "security"
+  }
+}
+
